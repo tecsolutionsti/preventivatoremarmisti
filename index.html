@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preventivatore LCM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f4f2ee; --panel:#ffffff; --ink:#1f2326; --muted:#6b7177; --line:#e2ded6;
+  --accent:#7a5c3a; --accent-soft:#f1e9df; --ok:#2f6d4f; --warn:#a2541b; --chip:#ece8e1;
+  --shadow:0 1px 2px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16181a; --panel:#1f2225; --ink:#e9e6e1; --muted:#9aa0a6; --line:#33373b;
+    --accent:#d0a676; --accent-soft:#2c261f; --ok:#6fbf95; --warn:#e39a5f; --chip:#2a2e32; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16181a; --panel:#1f2225; --ink:#e9e6e1; --muted:#9aa0a6; --line:#33373b;
+  --accent:#d0a676; --accent-soft:#2c261f; --ok:#6fbf95; --warn:#e39a5f; --chip:#2a2e32; --shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif}
+.num,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+header.top{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line)}
+.top .in{max-width:1180px;margin:0 auto;padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.brand{font-weight:600;letter-spacing:.2px}
+.brand small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+.tabs button{border:0;background:transparent;color:var(--muted);padding:8px 12px;border-radius:8px;font:inherit;cursor:pointer}
+.tabs button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+main{max-width:1180px;margin:0 auto;padding:16px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}}
+.span2{grid-column:span 2}
+@media (max-width:560px){.span2{grid-column:auto}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.grid .span2{grid-column:1/-1}td input.q{width:64px}.hide-sm{display:none}th,td{padding:7px 4px}}
+html,body{overflow-x:hidden}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin-bottom:16px}
+.card > .hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.card > .hd h2,.card > .hd h3{margin:0;font-size:15px;font-weight:600}
+.card > .bd{padding:14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .btn.pri{color:#1a1a1a}
+.btn.sm{padding:5px 9px;font-size:13px}
+.btn.ghost{border-color:transparent;color:var(--muted)}
+.spacer{flex:1}
+.chip{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 9px;font-size:12px;color:var(--muted)}
+.chip.ok{color:var(--ok)} .chip.warn{color:var(--warn)}
+.pz-price{font-weight:600;color:var(--accent)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:12px 0 4px}
+.kpi{background:var(--bg);border-radius:8px;padding:8px 10px}
+.kpi b{display:block;font-size:12px;font-weight:400;color:var(--muted)}
+.kpi span{font-size:15px;font-weight:600}
+table{width:100%;border-collapse:collapse}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:12px;font-weight:500;color:var(--muted)}
+td.r,th.r{text-align:right}
+tr.off td{opacity:.45}
+td .note{display:block;font-size:12px;color:var(--muted)}
+td input.q{width:84px;text-align:right;padding:5px 6px}
+.tblwrap{overflow-x:auto}
+.sum td{border:0;padding:4px 0}
+.sum tr.tot td{border-top:1px solid var(--line);padding-top:8px;font-weight:600}
+.sum tr.big td{font-size:18px;color:var(--accent);font-weight:600}
+.sum tr.sub td{color:var(--muted);font-size:13px}
+aside .card{position:sticky;top:76px}
+@media (max-width:900px){aside .card{position:static}}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.addrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.addrow select{flex:1;min-width:180px}
+.flag{font-size:12px;color:var(--warn)}
+.hidden{display:none !important}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.howto h3{margin:18px 0 6px;font-size:15px}
+.howto p,.howto li{color:var(--ink)}
+.formula{background:var(--bg);border-radius:8px;padding:10px 12px;font-family:"IBM Plex Mono",monospace;font-size:13px;overflow-x:auto}
+#printOffer{display:none}
+@media print{
+  body{background:#fff;color:#000}
+  header.top,main{display:none !important}
+  #printOffer{display:block;padding:10mm;font-size:11pt;color:#000}
+  #printOffer table th,#printOffer table td{border-bottom:1px solid #bbb;color:#000}
+}
+#printOffer h1{font-size:18pt;margin:0 0 4px}
+#printOffer .meta{margin:12px 0 18px;display:grid;grid-template-columns:1fr 1fr;gap:4px 24px}
+#printOffer .tot{margin-top:14px;width:50%;margin-left:auto}
+#printOffer .tot td{border:0;padding:3px 0}
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <div class="brand">Preventivatore marmi &amp; graniti<small>Prototipo ReporTech · L.C.M. Marchioni</small></div>
+  <nav class="tabs" id="tabs">
+    <button data-tab="prev" class="on">Preventivo</button>
+    <button data-tab="list">Listino</button>
+    <button data-tab="how">Come calcola</button>
+  </nav>
+</div></header>
+
+<main>
+  <!-- ============ PREVENTIVO ============ -->
+  <section id="tab-prev">
+    <div class="card"><div class="hd">
+      <h2>Listino</h2><span class="chip" id="srcChip">—</span><span class="spacer"></span>
+      <label class="btn sm" for="fileIn">Carica listino Excel</label>
+      <input type="file" id="fileIn" accept=".xlsx,.xls" class="hidden">
+    </div></div>
+
+    <div class="layout">
+      <div>
+        <div class="card">
+          <div class="hd"><h2>Dati preventivo</h2><span class="spacer"></span>
+            <button class="btn sm ghost" id="btnNew">Nuovo</button></div>
+          <div class="bd grid">
+            <label class="f">Cliente<input id="cliente" placeholder="Nome / ragione sociale"></label>
+            <label class="f">Tipo cliente<select id="tipo"></select></label>
+            <label class="f">Riferimento / cantiere<input id="rif" placeholder="es. Casa Rossi – cucina"></label>
+            <label class="f">Data<input id="data" type="date"></label>
+          </div>
+        </div>
+
+        <div id="pezzi"></div>
+
+        <div class="card"><div class="bd addrow">
+          <select id="newModel"></select>
+          <button class="btn pri" id="btnAddPz">+ Aggiungi pezzo</button>
+        </div></div>
+
+        <div class="card">
+          <div class="hd"><h2>Imballo, trasporto, posa</h2></div>
+          <div class="bd tblwrap"><table id="accTbl"></table></div>
+        </div>
+
+        <div class="card">
+          <div class="hd"><h2>Carico di produzione</h2><span class="chip">ore per risorsa</span></div>
+          <div class="bd tblwrap"><table id="loadTbl"></table>
+            <p class="small muted">Queste ore diventano il ciclo di lavoro dell'ordine quando il preventivo viene accettato.</p></div>
+        </div>
+      </div>
+
+      <aside>
+        <div class="card">
+          <div class="hd"><h2>Riepilogo</h2></div>
+          <div class="bd">
+            <table class="sum" id="sumTbl"></table>
+            <div class="addrow">
+              <button class="btn pri" id="btnPrint" style="flex:1">Stampa offerta cliente</button>
+            </div>
+            <p class="small muted" style="margin-bottom:0">Costi interni e margini restano solo a video: l'offerta stampata mostra solo i prezzi.</p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ LISTINO ============ -->
+  <section id="tab-list" class="hidden">
+    <div class="card"><div class="hd"><h2>Dati del listino</h2><span class="spacer"></span>
+      <select id="sheetSel" style="width:auto"></select></div>
+      <div class="bd tblwrap"><table id="sheetTbl"></table></div>
+    </div>
+  </section>
+
+  <!-- ============ COME CALCOLA ============ -->
+  <section id="tab-how" class="hidden">
+    <div class="card"><div class="bd howto">
+      <h3>1. Ogni pezzo si scompone in driver di costo</h3>
+      <p>Non serve un catalogo di prodotti: qualsiasi pezzo su misura si descrive con poche misure (L, P, H, N) da cui derivano metri quadri, metri lineari e numero di pezzi.</p>
+      <div class="formula">AREA = L×P×N · AREA_H = L×H×N · ML_FRONTE = L×N · ML_LATI = 2×P×N<br>ML_PERIM = 2×(L+P)×N · ML_ALZ = L×N · ML_PERIM_H = 2×(L+H)×N · N_PZ = pezzi</div>
+      <h3>2. Materiale al m², con sfrido</h3>
+      <p>Prezzo fornitore per materiale e spessore. Lo sfrido arriva dal materiale (o dal modello, o si forza sul pezzo). In alternativa si addebitano le lastre intere.</p>
+      <div class="formula">Costo materiale = (AREA + AREA_H) × (1 + sfrido) × €/m²<br>Lastra intera: ⌈m² con sfrido ÷ m² lastra⌉ × prezzo lastra</div>
+      <h3>3. Lavorazioni a tempo × costo orario</h3>
+      <p>Ogni lavorazione ha una velocità di riferimento su marmo 2 cm. Classe del materiale e spessore la rallentano tramite coefficienti. Il costo orario di ogni macchina è calcolato nel listino (ammortamento + energia + utensili + manutenzione + operatore).</p>
+      <div class="formula">Tempo (min) = Quantità ÷ Velocità × Coeff. classe × Coeff. spessore + Attrezzaggio<br>Costo = Tempo ÷ 60 × Costo orario risorsa</div>
+      <h3>4. Il modello propone il ciclo, l'ufficio lo corregge</h3>
+      <p>Ogni modello (scala, top cucina, bancone…) ha lavorazioni di default già attive o pronte da spuntare. Le quantità si possono sovrascrivere e si possono aggiungere lavorazioni extra.</p>
+      <h3>5. Dal costo al prezzo</h3>
+      <div class="formula">Costo diretto = Materiale + Lavorazioni + Accessori<br>Costo pieno = Costo diretto × (1 + Spese generali)<br>Prezzo = Costo pieno × (1 + Ricarico tipo cliente), arrotondato</div>
+      <h3>Aggiornare i dati</h3>
+      <p>Tutti i numeri stanno in <span class="mono">listino.xlsx</span>. Modificalo, sostituiscilo nella cartella del sito oppure caricalo con il pulsante "Carica listino Excel".</p>
+    </div></div>
+  </section>
+</main>
+
+<div id="printOffer"></div>
+
+<script>
+const EMBEDDED = {"Parametri":[{"Chiave":"Spese_generali","Valore":0.18,"Descrizione":"Spese generali d'impresa sul costo diretto (ufficio, affitto, assicurazioni...)"},{"Chiave":"Ricarico_Privato","Valore":0.4,"Descrizione":"Ricarico sul costo pieno – cliente privato"},{"Chiave":"Ricarico_Professionista","Valore":0.25,"Descrizione":"Ricarico sul costo pieno – posatori, imprese, architetti"},{"Chiave":"Ricarico_Estero","Valore":0.3,"Descrizione":"Ricarico sul costo pieno – clienti esteri"},{"Chiave":"IVA","Valore":0.22,"Descrizione":"Aliquota IVA ordinaria"},{"Chiave":"Costo_operatore_h","Valore":32,"Descrizione":"Costo aziendale orario di un operatore (€/h)"},{"Chiave":"Arrotondamento","Valore":5,"Descrizione":"Arrotonda il prezzo finale al multiplo di (€). 0 = nessun arrotondamento"},{"Chiave":"Validita_giorni","Valore":30,"Descrizione":"Validità dell'offerta (giorni)"},{"Chiave":"Ragione_sociale","Valore":"L.C.M. Marchioni Srl","Descrizione":"Intestazione offerta"}],"Fornitori":[{"Codice":"F01","Nome":"Fornitore Marmi Apuani (esempio)","Sede":"Carrara (MS)","Note":"Listino 2026 – Excel"},{"Codice":"F02","Nome":"Fornitore Graniti Import (esempio)","Sede":"Verona (VR)","Note":"Listino 2026 – PDF"},{"Codice":"F03","Nome":"Fornitore Sinterizzati (esempio)","Sede":"Sassuolo (MO)","Note":"Listino 2026 – Excel"},{"Codice":"F04","Nome":"Fornitore Quarzi & Agglomerati (esempio)","Sede":"Vicenza (VI)","Note":"Listino 2026 – Excel"}],"Classi":[{"Classe":"MARMO","Descrizione":"Marmo / calcare","Coeff_lavorazione":1.0,"Note":"Riferimento"},{"Classe":"GRANITO","Descrizione":"Granito","Coeff_lavorazione":1.6,"Note":"Più duro: taglio e lucidatura più lenti, più usura utensili"},{"Classe":"QUARZITE","Descrizione":"Quarzite","Coeff_lavorazione":2.0,"Note":"Molto dura"},{"Classe":"AGGLOMERATO","Descrizione":"Quarzo agglomerato","Coeff_lavorazione":1.3,"Note":null},{"Classe":"SINTERIZZATO","Descrizione":"Sinterizzato / gres grande lastra (Laminam, Kerlite...)","Coeff_lavorazione":1.8,"Note":"Fragile: velocità ridotte, più scarti"},{"Classe":"CERAMICA","Descrizione":"Gres porcellanato spessorato","Coeff_lavorazione":1.5,"Note":null}],"Spessori":[{"Spessore_cm":0.6,"Coeff_spessore":0.7},{"Spessore_cm":1.2,"Coeff_spessore":0.85},{"Spessore_cm":2.0,"Coeff_spessore":1.0},{"Spessore_cm":3.0,"Coeff_spessore":1.3},{"Spessore_cm":4.0,"Coeff_spessore":1.6},{"Spessore_cm":5.0,"Coeff_spessore":1.9}],"Materiali":[{"Codice":"CARR-2","Materiale":"Bianco Carrara C","Classe":"MARMO","Fornitore":"F01","Spessore_cm":2.0,"Prezzo_m2":95,"Lastra_L_cm":300,"Lastra_H_cm":160,"Sfrido":0.2,"Finitura_std":"Lucido","Lastra_m2":4.8,"Prezzo_lastra":456.0},{"Codice":"CARR-3","Materiale":"Bianco Carrara C","Classe":"MARMO","Fornitore":"F01","Spessore_cm":3.0,"Prezzo_m2":130,"Lastra_L_cm":300,"Lastra_H_cm":160,"Sfrido":0.2,"Finitura_std":"Lucido","Lastra_m2":4.8,"Prezzo_lastra":624.0},{"Codice":"BOTT-2","Materiale":"Botticino Classico","Classe":"MARMO","Fornitore":"F01","Spessore_cm":2.0,"Prezzo_m2":70,"Lastra_L_cm":290,"Lastra_H_cm":150,"Sfrido":0.2,"Finitura_std":"Lucido","Lastra_m2":4.35,"Prezzo_lastra":304.5},{"Codice":"BOTT-3","Materiale":"Botticino Classico","Classe":"MARMO","Fornitore":"F01","Spessore_cm":3.0,"Prezzo_m2":95,"Lastra_L_cm":290,"Lastra_H_cm":150,"Sfrido":0.2,"Finitura_std":"Lucido","Lastra_m2":4.35,"Prezzo_lastra":413.25},{"Codice":"MARQ-2","Materiale":"Nero Marquinia","Classe":"MARMO","Fornitore":"F01","Spessore_cm":2.0,"Prezzo_m2":140,"Lastra_L_cm":280,"Lastra_H_cm":150,"Sfrido":0.25,"Finitura_std":"Lucido","Lastra_m2":4.2,"Prezzo_lastra":588.0},{"Codice":"NASS-2","Materiale":"Nero Assoluto","Classe":"GRANITO","Fornitore":"F02","Spessore_cm":2.0,"Prezzo_m2":120,"Lastra_L_cm":300,"Lastra_H_cm":180,"Sfrido":0.15,"Finitura_std":"Lucido","Lastra_m2":5.4,"Prezzo_lastra":648.0},{"Codice":"NASS-3","Materiale":"Nero Assoluto","Classe":"GRANITO","Fornitore":"F02","Spessore_cm":3.0,"Prezzo_m2":165,"Lastra_L_cm":300,"Lastra_H_cm":180,"Sfrido":0.15,"Finitura_std":"Lucido","Lastra_m2":5.4,"Prezzo_lastra":891.0},{"Codice":"BSAR-2","Materiale":"Bianco Sardo","Classe":"GRANITO","Fornitore":"F02","Spessore_cm":2.0,"Prezzo_m2":55,"Lastra_L_cm":300,"Lastra_H_cm":180,"Sfrido":0.15,"Finitura_std":"Lucido","Lastra_m2":5.4,"Prezzo_lastra":297.0},{"Codice":"BSAR-3","Materiale":"Bianco Sardo","Classe":"GRANITO","Fornitore":"F02","Spessore_cm":3.0,"Prezzo_m2":75,"Lastra_L_cm":300,"Lastra_H_cm":180,"Sfrido":0.15,"Finitura_std":"Lucido","Lastra_m2":5.4,"Prezzo_lastra":405.0},{"Codice":"RBET-3","Materiale":"Rosa Beta","Classe":"GRANITO","Fornitore":"F02","Spessore_cm":3.0,"Prezzo_m2":80,"Lastra_L_cm":300,"Lastra_H_cm":180,"Sfrido":0.15,"Finitura_std":"Lucido","Lastra_m2":5.4,"Prezzo_lastra":432.0},{"Codice":"TAJM-2","Materiale":"Quarzite Taj Mahal","Classe":"QUARZITE","Fornitore":"F02","Spessore_cm":2.0,"Prezzo_m2":260,"Lastra_L_cm":300,"Lastra_H_cm":190,"Sfrido":0.25,"Finitura_std":"Lucido","Lastra_m2":5.7,"Prezzo_lastra":1482.0},{"Codice":"QBIA-2","Materiale":"Quarzo Bianco Assoluto","Classe":"AGGLOMERATO","Fornitore":"F04","Spessore_cm":2.0,"Prezzo_m2":120,"Lastra_L_cm":306,"Lastra_H_cm":140,"Sfrido":0.15,"Finitura_std":"Lucido","Lastra_m2":4.284,"Prezzo_lastra":514.08},{"Codice":"QBIA-3","Materiale":"Quarzo Bianco Assoluto","Classe":"AGGLOMERATO","Fornitore":"F04","Spessore_cm":3.0,"Prezzo_m2":150,"Lastra_L_cm":306,"Lastra_H_cm":140,"Sfrido":0.15,"Finitura_std":"Lucido","Lastra_m2":4.284,"Prezzo_lastra":642.6},{"Codice":"LAMC-12","Materiale":"Laminam Calacatta","Classe":"SINTERIZZATO","Fornitore":"F03","Spessore_cm":1.2,"Prezzo_m2":110,"Lastra_L_cm":324,"Lastra_H_cm":162,"Sfrido":0.2,"Finitura_std":"Lucido","Lastra_m2":5.2488,"Prezzo_lastra":577.368},{"Codice":"KERL-06","Materiale":"Kerlite Cemento","Classe":"SINTERIZZATO","Fornitore":"F03","Spessore_cm":0.6,"Prezzo_m2":75,"Lastra_L_cm":300,"Lastra_H_cm":100,"Sfrido":0.15,"Finitura_std":"Naturale","Lastra_m2":3.0,"Prezzo_lastra":225.0},{"Codice":"GRES-2","Materiale":"Gres porcellanato pietra grigia","Classe":"CERAMICA","Fornitore":"F03","Spessore_cm":2.0,"Prezzo_m2":65,"Lastra_L_cm":120,"Lastra_H_cm":60,"Sfrido":0.1,"Finitura_std":"Strutturato","Lastra_m2":0.72,"Prezzo_lastra":46.8}],"Risorse":[{"Codice":"FRESA","Risorsa":"Fresa a ponte (taglio)","Valore_acquisto":180000,"Anni_ammortamento":10,"Ore_annue":1600,"Potenza_kW":22,"Costo_kWh":0.25,"Utensili_h":6,"Manutenzione_anno":4000,"N_operatori":1.0,"Ammortamento_h":11.25,"Energia_h":5.5,"Manutenzione_h":2.5,"Costo_macchina_h":25.25,"Costo_operatore_h":32,"Costo_orario":57.25},{"Codice":"CNC","Risorsa":"Centro di lavoro CNC 5 assi","Valore_acquisto":350000,"Anni_ammortamento":10,"Ore_annue":1600,"Potenza_kW":30,"Costo_kWh":0.25,"Utensili_h":10,"Manutenzione_anno":8000,"N_operatori":1.0,"Ammortamento_h":21.875,"Energia_h":7.5,"Manutenzione_h":5.0,"Costo_macchina_h":44.375,"Costo_operatore_h":32,"Costo_orario":76.375},{"Codice":"WJ","Risorsa":"Waterjet","Valore_acquisto":250000,"Anni_ammortamento":10,"Ore_annue":1400,"Potenza_kW":37,"Costo_kWh":0.25,"Utensili_h":18,"Manutenzione_anno":10000,"N_operatori":0.5,"Ammortamento_h":17.8571428571429,"Energia_h":9.25,"Manutenzione_h":7.14285714285714,"Costo_macchina_h":52.25,"Costo_operatore_h":16,"Costo_orario":68.25},{"Codice":"COSTE","Risorsa":"Lucidacoste automatica","Valore_acquisto":90000,"Anni_ammortamento":10,"Ore_annue":1600,"Potenza_kW":15,"Costo_kWh":0.25,"Utensili_h":4,"Manutenzione_anno":2500,"N_operatori":0.5,"Ammortamento_h":5.625,"Energia_h":3.75,"Manutenzione_h":1.5625,"Costo_macchina_h":14.9375,"Costo_operatore_h":16,"Costo_orario":30.9375},{"Codice":"LUCID","Risorsa":"Levigatrice / lucidatrice superfici","Valore_acquisto":120000,"Anni_ammortamento":10,"Ore_annue":1600,"Potenza_kW":20,"Costo_kWh":0.25,"Utensili_h":5,"Manutenzione_anno":3000,"N_operatori":0.5,"Ammortamento_h":7.5,"Energia_h":5.0,"Manutenzione_h":1.875,"Costo_macchina_h":19.375,"Costo_operatore_h":16,"Costo_orario":35.375},{"Codice":"BANCO","Risorsa":"Banco manuale (utensili elettrici)","Valore_acquisto":5000,"Anni_ammortamento":5,"Ore_annue":1600,"Potenza_kW":3,"Costo_kWh":0.25,"Utensili_h":2,"Manutenzione_anno":300,"N_operatori":1.0,"Ammortamento_h":0.625,"Energia_h":0.75,"Manutenzione_h":0.1875,"Costo_macchina_h":3.5625,"Costo_operatore_h":32,"Costo_orario":35.5625},{"Codice":"IMBALLO","Risorsa":"Postazione imballo","Valore_acquisto":3000,"Anni_ammortamento":5,"Ore_annue":1600,"Potenza_kW":0,"Costo_kWh":0.25,"Utensili_h":0,"Manutenzione_anno":100,"N_operatori":1.0,"Ammortamento_h":0.375,"Energia_h":0.0,"Manutenzione_h":0.0625,"Costo_macchina_h":0.4375,"Costo_operatore_h":32,"Costo_orario":32.4375}],"Lavorazioni":[{"Codice":"TAGLIO","Lavorazione":"Taglio a misura","Categoria":"TAGLIO","UM":"ml","Risorsa":"FRESA","Velocita_UM_min":2.0,"Setup_min":5,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"SI","Note":"Rif. 2 ml/min su marmo 2 cm","Tempo_min_per_UM":0.5},{"Codice":"TAGLIO45","Lavorazione":"Taglio a 45° (giunto jolly)","Categoria":"TAGLIO","UM":"ml","Risorsa":"FRESA","Velocita_UM_min":0.8,"Setup_min":5,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"SI","Note":null,"Tempo_min_per_UM":1.25},{"Codice":"SAGOMA","Lavorazione":"Sagomatura / tagli curvi","Categoria":"TAGLIO","UM":"ml","Risorsa":"WJ","Velocita_UM_min":0.3,"Setup_min":10,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"SI","Note":null,"Tempo_min_per_UM":3.33333333333333},{"Codice":"FILO","Lavorazione":"Filo lucido costa dritta","Categoria":"BORDO","UM":"ml","Risorsa":"COSTE","Velocita_UM_min":1.0,"Setup_min":3,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"SI","Note":null,"Tempo_min_per_UM":1.0},{"Codice":"BISELLO","Lavorazione":"Bisello / smusso","Categoria":"BORDO","UM":"ml","Risorsa":"COSTE","Velocita_UM_min":1.2,"Setup_min":3,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"SI","Note":null,"Tempo_min_per_UM":0.833333333333333},{"Codice":"TORO","Lavorazione":"Toro / mezzo toro","Categoria":"BORDO","UM":"ml","Risorsa":"CNC","Velocita_UM_min":0.4,"Setup_min":10,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"SI","Note":null,"Tempo_min_per_UM":2.5},{"Codice":"INGROSSO","Lavorazione":"Ingrossamento incollato (veletta)","Categoria":"BORDO","UM":"ml","Risorsa":"BANCO","Velocita_UM_min":0.15,"Setup_min":0,"Applica_coeff_classe":"NO","Applica_coeff_spessore":"NO","Note":"≈ 7 min/ml","Tempo_min_per_UM":6.66666666666667},{"Codice":"GOCCIOL","Lavorazione":"Gocciolatoio","Categoria":"BORDO","UM":"ml","Risorsa":"FRESA","Velocita_UM_min":1.5,"Setup_min":3,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"NO","Note":null,"Tempo_min_per_UM":0.666666666666667},{"Codice":"ANTISCIV","Lavorazione":"Scanalature antiscivolo","Categoria":"BORDO","UM":"ml","Risorsa":"CNC","Velocita_UM_min":0.8,"Setup_min":5,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"NO","Note":null,"Tempo_min_per_UM":1.25},{"Codice":"FORO_SOTTO","Lavorazione":"Foro lavello sottotop con filo lucido","Categoria":"FORI","UM":"pz","Risorsa":"CNC","Velocita_UM_min":0.025,"Setup_min":0,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"SI","Note":"≈ 40 min/pz","Tempo_min_per_UM":40.0},{"Codice":"FORO_APP","Lavorazione":"Foro lavello/vasca da appoggio","Categoria":"FORI","UM":"pz","Risorsa":"CNC","Velocita_UM_min":0.05,"Setup_min":0,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"SI","Note":"≈ 20 min/pz","Tempo_min_per_UM":20.0},{"Codice":"FORO_PC","Lavorazione":"Foro piano cottura","Categoria":"FORI","UM":"pz","Risorsa":"WJ","Velocita_UM_min":0.05,"Setup_min":0,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"SI","Note":"≈ 20 min/pz","Tempo_min_per_UM":20.0},{"Codice":"FORO_RUB","Lavorazione":"Foro rubinetto / accessori","Categoria":"FORI","UM":"pz","Risorsa":"CNC","Velocita_UM_min":0.33,"Setup_min":0,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"NO","Note":"≈ 3 min/pz","Tempo_min_per_UM":3.03030303030303},{"Codice":"LUCIDATURA","Lavorazione":"Lucidatura superficie","Categoria":"FINITURA","UM":"m2","Risorsa":"LUCID","Velocita_UM_min":0.15,"Setup_min":5,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"NO","Note":null,"Tempo_min_per_UM":6.66666666666667},{"Codice":"LEVIGATURA","Lavorazione":"Levigatura (opaco)","Categoria":"FINITURA","UM":"m2","Risorsa":"LUCID","Velocita_UM_min":0.2,"Setup_min":5,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"NO","Note":null,"Tempo_min_per_UM":5.0},{"Codice":"SPAZZOLAT","Lavorazione":"Spazzolatura","Categoria":"FINITURA","UM":"m2","Risorsa":"LUCID","Velocita_UM_min":0.15,"Setup_min":5,"Applica_coeff_classe":"SI","Applica_coeff_spessore":"NO","Note":null,"Tempo_min_per_UM":6.66666666666667},{"Codice":"FIAMMAT","Lavorazione":"Fiammatura (solo graniti)","Categoria":"FINITURA","UM":"m2","Risorsa":"BANCO","Velocita_UM_min":0.1,"Setup_min":5,"Applica_coeff_classe":"NO","Applica_coeff_spessore":"NO","Note":null,"Tempo_min_per_UM":10.0},{"Codice":"RESINAT","Lavorazione":"Resinatura / trattamento protettivo","Categoria":"FINITURA","UM":"m2","Risorsa":"BANCO","Velocita_UM_min":0.25,"Setup_min":0,"Applica_coeff_classe":"NO","Applica_coeff_spessore":"NO","Note":null,"Tempo_min_per_UM":4.0},{"Codice":"MONTAGGIO","Lavorazione":"Assemblaggio / incollaggio a banco","Categoria":"MONTAGGIO","UM":"pz","Risorsa":"BANCO","Velocita_UM_min":0.033,"Setup_min":0,"Applica_coeff_classe":"NO","Applica_coeff_spessore":"NO","Note":"≈ 30 min/pz","Tempo_min_per_UM":30.3030303030303},{"Codice":"MOVIM","Lavorazione":"Movimentazione e carico lastra","Categoria":"ALTRO","UM":"pz","Risorsa":"BANCO","Velocita_UM_min":0.2,"Setup_min":0,"Applica_coeff_classe":"NO","Applica_coeff_spessore":"NO","Note":"≈ 5 min/pz","Tempo_min_per_UM":5.0},{"Codice":"IMBALLO_MO","Lavorazione":"Imballo (manodopera)","Categoria":"ALTRO","UM":"m2","Risorsa":"IMBALLO","Velocita_UM_min":0.5,"Setup_min":5,"Applica_coeff_classe":"NO","Applica_coeff_spessore":"NO","Note":"≈ 2 min/m²","Tempo_min_per_UM":2.0}],"Modelli":[{"Codice":"TOP_CUCINA","Modello":"Top cucina","Label_L":"Lunghezza (cm)","Label_P":"Profondità (cm)","Label_H":"Altezza alzatina (cm, 0 = no)","Label_N":"N. pezzi","Default_L":300,"Default_P":62,"Default_H":8,"Default_N":1,"Sfrido_override":null},{"Codice":"TOP_BAGNO","Modello":"Top bagno","Label_L":"Lunghezza (cm)","Label_P":"Profondità (cm)","Label_H":"Altezza veletta/alzatina (cm, 0 = no)","Label_N":"N. pezzi","Default_L":120,"Default_P":50,"Default_H":0,"Default_N":1,"Sfrido_override":null},{"Codice":"SCALA","Modello":"Scala (pedate + alzate)","Label_L":"Larghezza gradino (cm)","Label_P":"Pedata (cm)","Label_H":"Alzata (cm, 0 = senza alzate)","Label_N":"N. gradini","Default_L":100,"Default_P":30,"Default_H":17,"Default_N":14,"Sfrido_override":0.25},{"Codice":"DAVANZALE","Modello":"Davanzale / soglia","Label_L":"Lunghezza (cm)","Label_P":"Profondità (cm)","Label_H":"—","Label_N":"N. pezzi","Default_L":120,"Default_P":30,"Default_H":0,"Default_N":4,"Sfrido_override":null},{"Codice":"BANCONE","Modello":"Bancone (piano + frontale a 45°)","Label_L":"Lunghezza (cm)","Label_P":"Profondità piano (cm)","Label_H":"Altezza frontale (cm)","Label_N":"N. banconi","Default_L":250,"Default_P":60,"Default_H":110,"Default_N":1,"Sfrido_override":null},{"Codice":"RIVESTIM","Modello":"Rivestimento / pavimento a misura","Label_L":"Lunghezza (cm)","Label_P":"Larghezza (cm)","Label_H":"—","Label_N":"N. lastre/pezzi","Default_L":60,"Default_P":60,"Default_H":0,"Default_N":20,"Sfrido_override":null},{"Codice":"LIBERO","Modello":"Pezzo libero","Label_L":"Lunghezza (cm)","Label_P":"Larghezza (cm)","Label_H":"Altezza 2° elemento (cm)","Label_N":"N. pezzi","Default_L":100,"Default_P":50,"Default_H":0,"Default_N":1,"Sfrido_override":null}],"Modelli_Lavorazioni":[{"Modello":"TOP_CUCINA","Lavorazione":"TAGLIO","Base":"ML_PERIM","Coeff":1.0,"Attiva_default":"SI","Nota":"Taglio del piano"},{"Modello":"TOP_CUCINA","Lavorazione":"FILO","Base":"ML_FRONTE","Coeff":1.0,"Attiva_default":"SI","Nota":"Filo lucido sul fronte"},{"Modello":"TOP_CUCINA","Lavorazione":"FILO","Base":"ML_LATI","Coeff":0.5,"Attiva_default":"NO","Nota":"Testate a vista (una per lato)"},{"Modello":"TOP_CUCINA","Lavorazione":"FORO_SOTTO","Base":"MANUALE","Coeff":1.0,"Attiva_default":"SI","Nota":"Lavello sottotop"},{"Modello":"TOP_CUCINA","Lavorazione":"FORO_PC","Base":"MANUALE","Coeff":1.0,"Attiva_default":"SI","Nota":"Piano cottura"},{"Modello":"TOP_CUCINA","Lavorazione":"FORO_RUB","Base":"MANUALE","Coeff":1.0,"Attiva_default":"SI","Nota":"Rubinetto"},{"Modello":"TOP_CUCINA","Lavorazione":"TAGLIO","Base":"ML_PERIM_H","Coeff":1.0,"Attiva_default":"SI","Nota":"Taglio alzatina"},{"Modello":"TOP_CUCINA","Lavorazione":"FILO","Base":"ML_ALZ","Coeff":1.0,"Attiva_default":"SI","Nota":"Filo lucido alzatina"},{"Modello":"TOP_CUCINA","Lavorazione":"MOVIM","Base":"N_PZ","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"TOP_CUCINA","Lavorazione":"IMBALLO_MO","Base":"AREA","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"TOP_BAGNO","Lavorazione":"TAGLIO","Base":"ML_PERIM","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"TOP_BAGNO","Lavorazione":"FILO","Base":"ML_FRONTE","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"TOP_BAGNO","Lavorazione":"FILO","Base":"ML_LATI","Coeff":1.0,"Attiva_default":"NO","Nota":"Lati a vista"},{"Modello":"TOP_BAGNO","Lavorazione":"INGROSSO","Base":"ML_FRONTE","Coeff":1.0,"Attiva_default":"NO","Nota":"Veletta ingrossata"},{"Modello":"TOP_BAGNO","Lavorazione":"FORO_SOTTO","Base":"MANUALE","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"TOP_BAGNO","Lavorazione":"FORO_RUB","Base":"MANUALE","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"TOP_BAGNO","Lavorazione":"TAGLIO","Base":"ML_PERIM_H","Coeff":1.0,"Attiva_default":"SI","Nota":"Alzatina/veletta"},{"Modello":"TOP_BAGNO","Lavorazione":"MOVIM","Base":"N_PZ","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"TOP_BAGNO","Lavorazione":"IMBALLO_MO","Base":"AREA","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"SCALA","Lavorazione":"TAGLIO","Base":"ML_PERIM","Coeff":1.0,"Attiva_default":"SI","Nota":"Pedate"},{"Modello":"SCALA","Lavorazione":"TAGLIO","Base":"ML_PERIM_H","Coeff":1.0,"Attiva_default":"SI","Nota":"Alzate"},{"Modello":"SCALA","Lavorazione":"TORO","Base":"ML_FRONTE","Coeff":1.0,"Attiva_default":"SI","Nota":"Fronte pedata"},{"Modello":"SCALA","Lavorazione":"BISELLO","Base":"ML_FRONTE","Coeff":1.0,"Attiva_default":"NO","Nota":"Alternativa al toro"},{"Modello":"SCALA","Lavorazione":"FILO","Base":"ML_LATI","Coeff":0.5,"Attiva_default":"NO","Nota":"Lato a vista (scala a giorno)"},{"Modello":"SCALA","Lavorazione":"ANTISCIV","Base":"ML_FRONTE","Coeff":2.0,"Attiva_default":"NO","Nota":"2 righe per gradino"},{"Modello":"SCALA","Lavorazione":"MOVIM","Base":"N_PZ","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"SCALA","Lavorazione":"IMBALLO_MO","Base":"AREA","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"DAVANZALE","Lavorazione":"TAGLIO","Base":"ML_PERIM","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"DAVANZALE","Lavorazione":"FILO","Base":"ML_FRONTE","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"DAVANZALE","Lavorazione":"FILO","Base":"ML_LATI","Coeff":1.0,"Attiva_default":"SI","Nota":"Testate"},{"Modello":"DAVANZALE","Lavorazione":"GOCCIOL","Base":"ML_FRONTE","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"DAVANZALE","Lavorazione":"MOVIM","Base":"N_PZ","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"DAVANZALE","Lavorazione":"IMBALLO_MO","Base":"AREA","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"BANCONE","Lavorazione":"TAGLIO","Base":"ML_PERIM","Coeff":1.0,"Attiva_default":"SI","Nota":"Piano"},{"Modello":"BANCONE","Lavorazione":"TAGLIO","Base":"ML_PERIM_H","Coeff":1.0,"Attiva_default":"SI","Nota":"Frontale"},{"Modello":"BANCONE","Lavorazione":"TAGLIO45","Base":"ML_FRONTE","Coeff":2.0,"Attiva_default":"SI","Nota":"Giunto piano-frontale"},{"Modello":"BANCONE","Lavorazione":"FILO","Base":"ML_LATI","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"BANCONE","Lavorazione":"MONTAGGIO","Base":"N","Coeff":1.0,"Attiva_default":"SI","Nota":"Incollaggio a banco"},{"Modello":"BANCONE","Lavorazione":"MOVIM","Base":"N_PZ","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"BANCONE","Lavorazione":"IMBALLO_MO","Base":"AREA","Coeff":1.5,"Attiva_default":"SI","Nota":"Imballo più voluminoso"},{"Modello":"RIVESTIM","Lavorazione":"TAGLIO","Base":"ML_PERIM","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"RIVESTIM","Lavorazione":"TAGLIO45","Base":"MANUALE","Coeff":0.0,"Attiva_default":"NO","Nota":"Spigoli a 45° (ml da inserire)"},{"Modello":"RIVESTIM","Lavorazione":"MOVIM","Base":"N_PZ","Coeff":0.2,"Attiva_default":"SI","Nota":"Movimentazione a lotti"},{"Modello":"RIVESTIM","Lavorazione":"IMBALLO_MO","Base":"AREA","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"LIBERO","Lavorazione":"TAGLIO","Base":"ML_PERIM","Coeff":1.0,"Attiva_default":"SI","Nota":null},{"Modello":"LIBERO","Lavorazione":"FILO","Base":"ML_FRONTE","Coeff":1.0,"Attiva_default":"NO","Nota":null},{"Modello":"LIBERO","Lavorazione":"MOVIM","Base":"N_PZ","Coeff":1.0,"Attiva_default":"SI","Nota":null}],"Accessori":[{"Codice":"IMB_PALLET","Voce":"Imballo pallet + angolari + film","UM":"m2","Costo_unitario":6.0,"Base_default":"M2_TOT","Attivo_default":"SI","Note":"Materiali d'imballo"},{"Codice":"IMB_CASSA","Voce":"Cassa in legno (spedizione/estero)","UM":"pz","Costo_unitario":85.0,"Base_default":"0","Attivo_default":"NO","Note":null},{"Codice":"TRASP_LOC","Voce":"Trasporto zona (entro 30 km)","UM":"forfait","Costo_unitario":90.0,"Base_default":"1","Attivo_default":"SI","Note":null},{"Codice":"TRASP_KM","Voce":"Trasporto oltre zona","UM":"km","Costo_unitario":1.4,"Base_default":"0","Attivo_default":"NO","Note":"Inserire i km"},{"Codice":"RILIEVO","Voce":"Rilievo misure in cantiere","UM":"forfait","Costo_unitario":70.0,"Base_default":"1","Attivo_default":"NO","Note":null},{"Codice":"POSA_M2","Voce":"Posa in opera (squadra 2 persone)","UM":"m2","Costo_unitario":45.0,"Base_default":"0","Attivo_default":"NO","Note":"LCM fa poca posa"},{"Codice":"POSA_H","Voce":"Posa / assistenza a ore","UM":"h","Costo_unitario":38.0,"Base_default":"0","Attivo_default":"NO","Note":null},{"Codice":"SILICONE","Voce":"Sigillature e materiale di consumo","UM":"forfait","Costo_unitario":25.0,"Base_default":"0","Attivo_default":"NO","Note":null}]};
+const REQUIRED = ["Parametri","Materiali","Classi","Spessori","Risorse","Lavorazioni","Modelli","Modelli_Lavorazioni","Accessori"];
+const BASES = ["AREA","AREA_H","ML_FRONTE","ML_LATI","ML_PERIM","ML_ALZ","ML_PERIM_H","N_PZ","N","MANUALE"];
+const BASE_LABEL = {AREA:"m² piano",AREA_H:"m² 2° elem.",ML_FRONTE:"ml fronte",ML_LATI:"ml lati",ML_PERIM:"ml perimetro",ML_ALZ:"ml 2° elem.",ML_PERIM_H:"ml perim. 2° elem.",N_PZ:"pezzi",N:"n.",MANUALE:"manuale"};
+const UM_LABEL = {m2:"m²",ml:"ml",pz:"pz",h:"h",km:"km",forfait:"forf."};
+const STORE_KEY = "lcm-preventivo-v1";
+
+let DB = null;          // listino indicizzato
+let RAW = null;         // fogli grezzi
+let SRC = "";
+let S = null;           // stato preventivo
+let uid = 1;
+
+const $ = s => document.querySelector(s);
+const eur = v => (isFinite(v)?v:0).toLocaleString("it-IT",{style:"currency",currency:"EUR"});
+const n2 = v => (isFinite(v)?v:0).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2});
+const n1 = v => (isFinite(v)?v:0).toLocaleString("it-IT",{minimumFractionDigits:1,maximumFractionDigits:1});
+const pct = v => (isFinite(v)?v:0).toLocaleString("it-IT",{style:"percent",minimumFractionDigits:1,maximumFractionDigits:1});
+const num = v => { if(v===null||v===undefined||v==="") return NaN; if(typeof v==="number") return v; return parseFloat(String(v).replace(",",".")); };
+const yes = v => String(v||"").trim().toUpperCase().startsWith("S") || v===true;
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------------- Listino ---------------- */
+function indexDB(raw){
+  const miss = REQUIRED.filter(k=>!raw[k]);
+  if(miss.length) throw new Error("Fogli mancanti: "+miss.join(", "));
+  const by = (rows,key) => Object.fromEntries(rows.filter(r=>r[key]!=null&&r[key]!=="").map(r=>[String(r[key]).trim(),r]));
+  const P = {}; raw.Parametri.forEach(r=>{ if(r.Chiave) P[String(r.Chiave).trim()] = r.Valore; });
+  const opH = num(P.Costo_operatore_h)||0;
+  const ris = by(raw.Risorse,"Codice");
+  Object.values(ris).forEach(r=>{
+    let c = num(r.Costo_orario);
+    if(!isFinite(c)){ // ricalcolo se il file non ha valori in cache
+      const amm = num(r.Valore_acquisto)/num(r.Anni_ammortamento)/num(r.Ore_annue);
+      const man = num(r.Manutenzione_anno)/num(r.Ore_annue);
+      c = (isFinite(amm)?amm:0) + (num(r.Potenza_kW)||0)*(num(r.Costo_kWh)||0) + (num(r.Utensili_h)||0) + (isFinite(man)?man:0) + (num(r.N_operatori)||0)*opH;
+    }
+    r._h = c;
+  });
+  const fornitori = raw.Fornitori ? by(raw.Fornitori,"Codice") : {};
+  const mat = by(raw.Materiali,"Codice");
+  Object.values(mat).forEach(m=>{
+    m._lastra = num(m.Lastra_L_cm)*num(m.Lastra_H_cm)/10000;
+    m._forn = fornitori[m.Fornitore]?.Nome || m.Fornitore || "";
+  });
+  const classi = by(raw.Classi,"Classe");
+  const spess = raw.Spessori.map(r=>({s:num(r.Spessore_cm),k:num(r.Coeff_spessore)})).filter(r=>isFinite(r.s)&&isFinite(r.k)).sort((a,b)=>a.s-b.s);
+  const lav = by(raw.Lavorazioni,"Codice");
+  const mod = by(raw.Modelli,"Codice");
+  const ml = {}; raw.Modelli_Lavorazioni.forEach(r=>{ if(!r.Modello) return; (ml[r.Modello] ||= []).push(r); });
+  const acc = raw.Accessori.filter(r=>r.Codice);
+  const ricarichi = Object.keys(P).filter(k=>k.startsWith("Ricarico_")).map(k=>({tipo:k.slice(9),v:num(P[k])}));
+  return {P,ris,mat,classi,spess,lav,mod,ml,acc,ricarichi};
+}
+function coeffSpessore(s){
+  const t = DB.spess; if(!t.length||!isFinite(s)) return 1;
+  if(s<=t[0].s) return t[0].k; if(s>=t[t.length-1].s) return t[t.length-1].k;
+  for(let i=1;i<t.length;i++) if(s<=t[i].s){ const a=t[i-1],b=t[i]; return a.k+(b.k-a.k)*(s-a.s)/(b.s-a.s); }
+  return 1;
+}
+function sheetsFromWorkbook(wb){
+  const out = {};
+  wb.SheetNames.forEach(n=>{ out[n] = XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:null}); });
+  return out;
+}
+function useRaw(raw,src){
+  DB = indexDB(raw); RAW = raw; SRC = src;
+  $("#srcChip").textContent = src; $("#srcChip").className = "chip " + (src.includes("esempio")?"warn":"ok");
+  fillStatic(); sanitizeState(); renderAll(); renderSheetView();
+}
+async function loadListino(){
+  try{
+    if(!window.XLSX) throw new Error("libreria Excel non caricata");
+    const res = await fetch("listino.xlsx",{cache:"no-store"});
+    if(!res.ok) throw new Error(res.status);
+    const wb = XLSX.read(await res.arrayBuffer(),{type:"array"});
+    useRaw(sheetsFromWorkbook(wb),"listino.xlsx dal sito");
+  }catch(e){
+    useRaw(EMBEDDED,"Listino di esempio integrato");
+  }
+}
+$("#fileIn").addEventListener("change",async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    const wb = XLSX.read(await f.arrayBuffer(),{type:"array"});
+    useRaw(sheetsFromWorkbook(wb),"File: "+f.name);
+  }catch(err){ alert("Impossibile leggere il listino: "+err.message); }
+  e.target.value="";
+});
+
+/* ---------------- Stato ---------------- */
+function today(){ const d=new Date(); return d.toISOString().slice(0,10); }
+function newState(){ return {cliente:"",tipo:"",rif:"",data:today(),pezzi:[],acc:{}}; }
+function defaultMaterial(){ return Object.keys(DB.mat)[0]; }
+function newPezzo(modCode){
+  const m = DB.mod[modCode];
+  const pz = {id:uid++, modello:modCode, materiale:defaultMaterial(), L:num(m.Default_L)||0, P:num(m.Default_P)||0, H:num(m.Default_H)||0, N:num(m.Default_N)||1,
+    finitura:"", lastra:false, sfrido:null, descr:"", open:true, righe:[]};
+  pz.righe = (DB.ml[modCode]||[]).filter(r=>DB.lav[r.Lavorazione]).map(r=>({lav:r.Lavorazione, base:BASES.includes(r.Base)?r.Base:"MANUALE", coeff:num(r.Coeff)||0, on:yes(r.Attiva_default), q:null, nota:r.Nota||"", extra:false}));
+  return pz;
+}
+function sanitizeState(){
+  if(!S) S = loadDraft() || newState();
+  if(!S.tipo || !DB.ricarichi.find(r=>r.tipo===S.tipo)) S.tipo = DB.ricarichi[0]?.tipo || "";
+  S.pezzi = S.pezzi.filter(p=>DB.mod[p.modello]);
+  S.pezzi.forEach(p=>{ if(!DB.mat[p.materiale]) p.materiale = defaultMaterial(); p.righe = p.righe.filter(r=>DB.lav[r.lav]); uid = Math.max(uid,p.id+1); });
+  DB.acc.forEach(a=>{ if(!S.acc[a.Codice]) S.acc[a.Codice] = {on:yes(a.Attivo_default), q:null}; });
+}
+function saveDraft(){ try{ localStorage.setItem(STORE_KEY,JSON.stringify(S)); }catch(e){} }
+function loadDraft(){ try{ const s = localStorage.getItem(STORE_KEY); return s?JSON.parse(s):null; }catch(e){ return null; } }
+
+/* ---------------- Calcolo ---------------- */
+function bases(p){
+  const l=p.L/100, w=p.P/100, h=p.H/100, n=p.N, hasH=h>0;
+  return {AREA:l*w*n, AREA_H:hasH?l*h*n:0, ML_FRONTE:l*n, ML_LATI:2*w*n, ML_PERIM:2*(l+w)*n, ML_ALZ:hasH?l*n:0, ML_PERIM_H:hasH?2*(l+h)*n:0, N_PZ:n*(hasH?2:1), N:n, MANUALE:1};
+}
+function costLav(code,qty,mat){
+  const L = DB.lav[code]; const R = DB.ris[L.Risorsa];
+  const v = num(L.Velocita_UM_min);
+  const kc = yes(L.Applica_coeff_classe) ? (num(DB.classi[mat.Classe]?.Coeff_lavorazione)||1) : 1;
+  const ks = yes(L.Applica_coeff_spessore) ? coeffSpessore(num(mat.Spessore_cm)) : 1;
+  const min = (qty>0 && v>0) ? qty/v*kc*ks + (num(L.Setup_min)||0) : 0;
+  const h = R ? R._h : 0;
+  return {min, cost:min/60*h, ris:L.Risorsa, um:L.UM, kc, ks};
+}
+function calcPezzo(p){
+  const b = bases(p), mat = DB.mat[p.materiale], mod = DB.mod[p.modello];
+  const netto = b.AREA + b.AREA_H;
+  const sfr = p.sfrido!=null && p.sfrido!=="" ? num(p.sfrido)/100 : (isFinite(num(mod.Sfrido_override)) ? num(mod.Sfrido_override) : (num(mat.Sfrido)||0));
+  let m2 = netto*(1+sfr), lastre = null;
+  if(p.lastra && mat._lastra>0){ lastre = Math.ceil(m2/mat._lastra - 1e-9); m2 = lastre*mat._lastra; }
+  const costMat = m2*(num(mat.Prezzo_m2)||0);
+  const righe = p.righe.map(r=>{
+    const auto = r.base==="MANUALE" ? r.coeff : b[r.base]*r.coeff;
+    const qty = r.q!=null ? r.q : auto;
+    const c = r.on ? costLav(r.lav,qty,mat) : {min:0,cost:0,ris:DB.lav[r.lav].Risorsa,um:DB.lav[r.lav].UM};
+    return {...r, auto, qty, ...c};
+  });
+  if(p.finitura && DB.lav[p.finitura]){
+    const c = costLav(p.finitura,b.AREA,mat);
+    righe.push({lav:p.finitura, base:"AREA", coeff:1, on:true, auto:b.AREA, qty:b.AREA, nota:"Finitura superficiale", fin:true, ...c});
+  }
+  const costLavTot = righe.reduce((s,r)=>s+r.cost,0);
+  const minTot = righe.reduce((s,r)=>s+r.min,0);
+  return {b, mat, netto, sfr, m2, lastre, costMat, righe, costLav:costLavTot, minTot, diretto:costMat+costLavTot};
+}
+function calcAll(){
+  const P = DB.P;
+  const pezzi = S.pezzi.map(calcPezzo);
+  const m2Tot = pezzi.reduce((s,c)=>s+c.netto,0);
+  const pzTot = pezzi.reduce((s,c)=>s+c.b.N_PZ,0);
+  const acc = DB.acc.map(a=>{
+    const st = S.acc[a.Codice]; const bd = String(a.Base_default??"0").trim();
+    const auto = bd==="M2_TOT"?m2Tot : bd==="PZ_TOT"?pzTot : (num(bd)||0);
+    const qty = st.q!=null ? st.q : auto;
+    const cost = st.on ? qty*(num(a.Costo_unitario)||0) : 0;
+    return {a, on:st.on, auto, qty, cost};
+  });
+  const costMat = pezzi.reduce((s,c)=>s+c.costMat,0);
+  const costLav = pezzi.reduce((s,c)=>s+c.costLav,0);
+  const costAcc = acc.reduce((s,x)=>s+x.cost,0);
+  const diretto = costMat+costLav+costAcc;
+  const sg = num(P.Spese_generali)||0;
+  const pieno = diretto*(1+sg);
+  const ric = DB.ricarichi.find(r=>r.tipo===S.tipo)?.v || 0;
+  const k = (1+sg)*(1+ric);
+  const prezzoCalc = pieno*(1+ric);
+  const arr = num(P.Arrotondamento)||0;
+  const netto = arr>0 ? Math.round(prezzoCalc/arr)*arr : prezzoCalc;
+  const iva = num(P.IVA)||0;
+  const load = {};
+  pezzi.forEach(c=>c.righe.forEach(r=>{ if(r.min>0){ (load[r.ris] ||= {min:0,cost:0}); load[r.ris].min+=r.min; load[r.ris].cost+=r.cost; } }));
+  return {pezzi, acc, m2Tot, pzTot, costMat, costLav, costAcc, diretto, sg, pieno, ric, k, prezzoCalc, netto, arrDiff:netto-prezzoCalc, iva, ivaV:netto*iva, totale:netto*(1+iva), margine:netto-pieno, load};
+}
+
+/* ---------------- Render ---------------- */
+function fillStatic(){
+  $("#tipo").innerHTML = DB.ricarichi.map(r=>`<option value="${esc(r.tipo)}">${esc(r.tipo)} (ricarico ${pct(r.v)})</option>`).join("");
+  $("#newModel").innerHTML = Object.values(DB.mod).map(m=>`<option value="${esc(m.Codice)}">${esc(m.Modello)}</option>`).join("");
+}
+function matOptions(sel){
+  const groups = {};
+  Object.values(DB.mat).forEach(m=>{ (groups[m.Classe] ||= []).push(m); });
+  return Object.entries(groups).map(([cl,ms])=>`<optgroup label="${esc(DB.classi[cl]?.Descrizione||cl)}">`+
+    ms.map(m=>`<option value="${esc(m.Codice)}" ${m.Codice===sel?"selected":""}>${esc(m.Materiale)} · ${n1(num(m.Spessore_cm))} cm · ${eur(num(m.Prezzo_m2))}/m²</option>`).join("")+`</optgroup>`).join("");
+}
+function finOptions(sel){
+  return `<option value="">Come da lastra</option>`+Object.values(DB.lav).filter(l=>String(l.Categoria).toUpperCase()==="FINITURA")
+    .map(l=>`<option value="${esc(l.Codice)}" ${l.Codice===sel?"selected":""}>${esc(l.Lavorazione)}</option>`).join("");
+}
+function lavOptions(){
+  const g = {};
+  Object.values(DB.lav).forEach(l=>{ (g[l.Categoria||"ALTRO"] ||= []).push(l); });
+  return `<option value="">Aggiungi lavorazione…</option>`+Object.entries(g).map(([c,ls])=>`<optgroup label="${esc(c)}">`+ls.map(l=>`<option value="${esc(l.Codice)}">${esc(l.Lavorazione)} (${UM_LABEL[l.UM]||l.UM})</option>`).join("")+`</optgroup>`).join("");
+}
+function renderPezzi(){
+  const box = $("#pezzi");
+  if(!S.pezzi.length){ box.innerHTML = `<div class="card"><div class="empty">Nessun pezzo. Scegli un modello qui sotto e premi “Aggiungi pezzo”.</div></div>`; return; }
+  box.innerHTML = S.pezzi.map((p,i)=>{
+    const m = DB.mod[p.modello];
+    const hDis = String(m.Label_H||"").trim()==="—";
+    return `<div class="card" data-pz="${p.id}">
+      <div class="hd"><h3>${i+1}. ${esc(m.Modello)}</h3><span class="chip" data-o="mq"></span>
+        <span class="spacer"></span><span class="pz-price num" data-o="price"></span>
+        <button class="btn sm ghost" data-act="toggle">${p.open?"Chiudi":"Apri"}</button>
+        <button class="btn sm ghost" data-act="dup">Duplica</button>
+        <button class="btn sm ghost" data-act="del">Elimina</button></div>
+      <div class="bd ${p.open?"":"hidden"}">
+        <div class="grid">
+          <label class="f">Modello<select data-f="modello">${Object.values(DB.mod).map(x=>`<option value="${esc(x.Codice)}" ${x.Codice===p.modello?"selected":""}>${esc(x.Modello)}</option>`).join("")}</select></label>
+          <label class="f span2">Materiale e spessore<select data-f="materiale">${matOptions(p.materiale)}</select></label>
+          <label class="f">Finitura superficiale<select data-f="finitura">${finOptions(p.finitura)}</select></label>
+        </div>
+        <div class="grid" style="margin-top:10px">
+          <label class="f">${esc(m.Label_L)}<input class="num" inputmode="decimal" data-f="L" value="${p.L}"></label>
+          <label class="f">${esc(m.Label_P)}<input class="num" inputmode="decimal" data-f="P" value="${p.P}"></label>
+          <label class="f ${hDis?"hidden":""}">${esc(m.Label_H)}<input class="num" inputmode="decimal" data-f="H" value="${p.H}"></label>
+          <label class="f">${esc(m.Label_N)}<input class="num" inputmode="decimal" data-f="N" value="${p.N}"></label>
+          <label class="f">Sfrido % (vuoto = da listino)<input class="num" inputmode="decimal" data-f="sfrido" value="${p.sfrido??""}" placeholder="auto"></label>
+          <label class="f">Addebito materiale<select data-f="lastra"><option value="0" ${!p.lastra?"selected":""}>m² + sfrido</option><option value="1" ${p.lastra?"selected":""}>Lastre intere</option></select></label>
+        </div>
+        <label class="f" style="margin-top:10px">Descrizione per il cliente (facoltativa)<input data-f="descr" value="${esc(p.descr)}" placeholder="es. Top cucina con lavello sottotop e alzatina"></label>
+        <div class="kpis" data-o="kpis"></div>
+        <div class="tblwrap"><table>
+          <thead><tr><th></th><th>Lavorazione</th><th class="r">Quantità</th><th class="r hide-sm">Min</th><th class="r">Costo</th><th></th></tr></thead>
+          <tbody data-o="righe"></tbody></table></div>
+        <div class="addrow"><select data-act="addlav">${lavOptions()}</select></div>
+      </div></div>`;
+  }).join("");
+}
+function renderRighe(card,p,c){
+  const tb = card.querySelector('[data-o="righe"]');
+  tb.innerHTML = c.righe.map((r,idx)=>{
+    const L = DB.lav[r.lav]; const um = UM_LABEL[L.UM]||L.UM;
+    const baseTxt = r.fin ? "auto · m² piano" : r.base==="MANUALE" ? "manuale" : `${BASE_LABEL[r.base]} × ${n2(r.coeff)}`;
+    const qtyCell = r.fin ? `<span class="num">${n2(r.qty)}</span> ${um}`
+      : `<input class="q num" inputmode="decimal" data-r="${idx}" data-rf="q" value="${+r.qty.toFixed(2)}"> ${um}${r.q!=null?` <button class="btn sm ghost" data-r="${idx}" data-act="reset" title="Ripristina calcolo automatico">↺</button>`:""}`;
+    return `<tr class="${r.on?"":"off"}">
+      <td>${r.fin?"":`<input type="checkbox" data-r="${idx}" data-rf="on" ${r.on?"checked":""}>`}</td>
+      <td>${esc(L.Lavorazione)}<span class="note">${esc(r.nota||"")}${r.nota?" · ":""}${baseTxt} · ${esc(L.Risorsa)}</span></td>
+      <td class="r">${qtyCell}</td>
+      <td class="r num hide-sm">${r.min?n1(r.min):"–"}</td>
+      <td class="r num">${r.cost?eur(r.cost):"–"}</td>
+      <td>${r.extra?`<button class="btn sm ghost" data-r="${idx}" data-act="rmrow" title="Rimuovi">✕</button>`:""}</td></tr>`;
+  }).join("");
+}
+function updateNumbers(full){
+  const R = calcAll();
+  S.pezzi.forEach((p,i)=>{
+    const card = document.querySelector(`[data-pz="${p.id}"]`); if(!card) return;
+    const c = R.pezzi[i];
+    card.querySelector('[data-o="price"]').textContent = eur(c.diretto*R.k);
+    card.querySelector('[data-o="mq"]').textContent = `${n2(c.netto)} m² netti`;
+    const sfrTxt = c.lastre!=null ? `${c.lastre} lastre (${n2(c.m2)} m²)` : `${n2(c.m2)} m² (sfrido ${pct(c.sfr)})`;
+    card.querySelector('[data-o="kpis"]').innerHTML = `
+      <div class="kpi"><b>Materiale da acquistare</b><span class="num">${sfrTxt}</span></div>
+      <div class="kpi"><b>Costo materiale</b><span class="num">${eur(c.costMat)}</span></div>
+      <div class="kpi"><b>Lavorazioni · ${n1(c.minTot/60)} h</b><span class="num">${eur(c.costLav)}</span></div>
+      <div class="kpi"><b>Costo diretto</b><span class="num">${eur(c.diretto)}</span></div>`;
+    const focused = document.activeElement && card.contains(document.activeElement) && document.activeElement.dataset.rf==="q";
+    if(full || !focused) renderRighe(card,p,c);
+  });
+  // accessori
+  $("#accTbl").innerHTML = `<thead><tr><th></th><th>Voce</th><th class="r">Quantità</th><th class="r hide-sm">€/UM</th><th class="r">Costo</th></tr></thead><tbody>`+
+    R.acc.map((x,i)=>`<tr class="${x.on?"":"off"}"><td><input type="checkbox" data-acc="${esc(x.a.Codice)}" data-af="on" ${x.on?"checked":""}></td>
+      <td>${esc(x.a.Voce)}<span class="note">${esc(x.a.Note||"")}</span></td>
+      <td class="r"><input class="q num" inputmode="decimal" data-acc="${esc(x.a.Codice)}" data-af="q" value="${+x.qty.toFixed(2)}"> ${UM_LABEL[x.a.UM]||esc(x.a.UM)}</td>
+      <td class="r num hide-sm">${eur(num(x.a.Costo_unitario))}</td><td class="r num">${x.cost?eur(x.cost):"–"}</td></tr>`).join("")+`</tbody>`;
+  if(document.activeElement?.dataset?.af==="q"){ /* evita perdita del focus */ }
+  // carico
+  const ld = Object.entries(R.load);
+  $("#loadTbl").innerHTML = ld.length ? `<thead><tr><th>Risorsa</th><th class="r">Ore</th><th class="r">€/h</th><th class="r">Costo</th></tr></thead><tbody>`+
+    ld.map(([k,v])=>`<tr><td>${esc(DB.ris[k]?.Risorsa||k)}</td><td class="r num">${n2(v.min/60)}</td><td class="r num">${eur(DB.ris[k]?._h)}</td><td class="r num">${eur(v.cost)}</td></tr>`).join("")+
+    `<tr><td><b>Totale</b></td><td class="r num"><b>${n2(ld.reduce((s,[,v])=>s+v.min,0)/60)}</b></td><td></td><td class="r num"><b>${eur(R.costLav)}</b></td></tr></tbody>` : `<tr><td class="muted">Nessuna lavorazione.</td></tr>`;
+  // riepilogo
+  const margPct = R.netto>0 ? R.margine/R.netto : 0;
+  $("#sumTbl").innerHTML = `
+    <tr><td>Materiale</td><td class="r num">${eur(R.costMat)}</td></tr>
+    <tr><td>Lavorazioni</td><td class="r num">${eur(R.costLav)}</td></tr>
+    <tr><td>Imballo / trasporto / posa</td><td class="r num">${eur(R.costAcc)}</td></tr>
+    <tr class="tot"><td>Costo diretto</td><td class="r num">${eur(R.diretto)}</td></tr>
+    <tr class="sub"><td>Spese generali ${pct(R.sg)}</td><td class="r num">${eur(R.pieno-R.diretto)}</td></tr>
+    <tr class="tot"><td>Costo pieno</td><td class="r num">${eur(R.pieno)}</td></tr>
+    <tr class="sub"><td>Ricarico ${esc(S.tipo)} ${pct(R.ric)}</td><td class="r num">${eur(R.prezzoCalc-R.pieno)}</td></tr>
+    ${Math.abs(R.arrDiff)>0.004?`<tr class="sub"><td>Arrotondamento</td><td class="r num">${eur(R.arrDiff)}</td></tr>`:""}
+    <tr class="tot big"><td>Prezzo netto</td><td class="r num">${eur(R.netto)}</td></tr>
+    <tr class="sub"><td>IVA ${pct(R.iva)}</td><td class="r num">${eur(R.ivaV)}</td></tr>
+    <tr class="tot"><td>Totale IVA inclusa</td><td class="r num">${eur(R.totale)}</td></tr>
+    <tr><td colspan="2" style="padding-top:12px"><div class="kpis" style="margin:0">
+      <div class="kpi"><b>Margine</b><span class="num" style="color:${R.margine>=0?"var(--ok)":"var(--warn)"}">${eur(R.margine)} · ${pct(margPct)}</span></div>
+      <div class="kpi"><b>Prezzo medio</b><span class="num">${R.m2Tot>0?eur(R.netto/R.m2Tot)+"/m²":"–"}</span></div>
+      <div class="kpi"><b>m² netti</b><span class="num">${n2(R.m2Tot)}</span></div>
+    </div></td></tr>`;
+  saveDraft();
+  return R;
+}
+function renderAll(){
+  $("#cliente").value = S.cliente; $("#rif").value = S.rif; $("#data").value = S.data; $("#tipo").value = S.tipo;
+  renderPezzi(); updateNumbers(true);
+}
+
+/* ---------------- Eventi ---------------- */
+["cliente","rif","data","tipo"].forEach(k=>$("#"+k).addEventListener("input",e=>{ S[k]=e.target.value; updateNumbers(); }));
+$("#btnAddPz").addEventListener("click",()=>{ S.pezzi.forEach(p=>p.open=false); S.pezzi.push(newPezzo($("#newModel").value)); renderPezzi(); updateNumbers(true); document.querySelector(`[data-pz="${S.pezzi.at(-1).id}"]`)?.scrollIntoView({behavior:"smooth",block:"start"}); });
+$("#btnNew").addEventListener("click",()=>{ if(!confirm("Iniziare un nuovo preventivo? Quello attuale verrà cancellato.")) return; S = newState(); sanitizeState(); renderAll(); });
+$("#btnPrint").addEventListener("click",()=>{ buildPrint(); window.print(); });
+window.addEventListener("beforeprint",buildPrint);
+
+const pzOf = el => { const card = el.closest("[data-pz]"); return card ? S.pezzi.find(p=>p.id==card.dataset.pz) : null; };
+$("#pezzi").addEventListener("click",e=>{
+  const b = e.target.closest("[data-act]"); if(!b || b.tagName==="SELECT") return;
+  const p = pzOf(b); if(!p) return; const act = b.dataset.act;
+  if(act==="toggle"){ p.open=!p.open; renderPezzi(); updateNumbers(true); }
+  if(act==="del"){ if(confirm("Eliminare questo pezzo?")){ S.pezzi = S.pezzi.filter(x=>x!==p); renderPezzi(); updateNumbers(true); } }
+  if(act==="dup"){ const c = JSON.parse(JSON.stringify(p)); c.id = uid++; S.pezzi.splice(S.pezzi.indexOf(p)+1,0,c); renderPezzi(); updateNumbers(true); }
+  if(act==="reset"){ p.righe[+b.dataset.r].q = null; updateNumbers(true); }
+  if(act==="rmrow"){ p.righe.splice(+b.dataset.r,1); updateNumbers(true); }
+});
+$("#pezzi").addEventListener("change",e=>{
+  const t = e.target, p = pzOf(t); if(!p) return;
+  if(t.dataset.act==="addlav" && t.value){ p.righe.push({lav:t.value, base:"MANUALE", coeff:1, on:true, q:null, nota:"Aggiunta manualmente", extra:true}); t.value=""; updateNumbers(true); return; }
+  const f = t.dataset.f;
+  if(f==="modello"){ const fresh = newPezzo(t.value); Object.assign(p,{modello:fresh.modello,L:fresh.L,P:fresh.P,H:fresh.H,N:fresh.N,righe:fresh.righe}); renderPezzi(); updateNumbers(true); return; }
+  if(f==="materiale"||f==="finitura"){ p[f]=t.value; updateNumbers(true); return; }
+  if(f==="lastra"){ p.lastra = t.value==="1"; updateNumbers(); return; }
+  if(t.dataset.rf==="on"){ p.righe[+t.dataset.r].on = t.checked; updateNumbers(true); }
+});
+$("#pezzi").addEventListener("input",e=>{
+  const t = e.target, p = pzOf(t); if(!p) return;
+  const f = t.dataset.f;
+  if(["L","P","H","N"].includes(f)){ p[f] = Math.max(0,num(t.value)||0); updateNumbers(); }
+  else if(f==="sfrido"){ p.sfrido = t.value.trim()==="" ? null : num(t.value); updateNumbers(); }
+  else if(f==="descr"){ p.descr = t.value; saveDraft(); }
+  else if(t.dataset.rf==="q"){ const v = num(t.value); p.righe[+t.dataset.r].q = isFinite(v)?v:0; updateNumbers(); }
+});
+$("#pezzi").addEventListener("focusout",e=>{ if(e.target.dataset?.rf==="q") setTimeout(()=>updateNumbers(true),0); });
+$("#accTbl").addEventListener("change",e=>{ const t=e.target; if(t.dataset.af==="on"){ S.acc[t.dataset.acc].on = t.checked; updateNumbers(); } });
+$("#accTbl").addEventListener("input",e=>{ const t=e.target; if(t.dataset.af==="q"){ const v=num(t.value); S.acc[t.dataset.acc].q = isFinite(v)?v:0; refreshTotalsOnly(); } });
+function refreshTotalsOnly(){ const ae = document.activeElement; const code = ae?.dataset?.acc; const pos = ae?.selectionStart; updateNumbers(); if(code){ const el = document.querySelector(`[data-acc="${code}"][data-af="q"]`); if(el){ el.focus(); try{ el.setSelectionRange(pos,pos);}catch(e){} } } }
+
+document.querySelectorAll("#tabs button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  ["prev","list","how"].forEach(t=>$("#tab-"+t).classList.toggle("hidden",t!==b.dataset.tab));
+}));
+
+/* ---------------- Vista listino ---------------- */
+function renderSheetView(){
+  const sel = $("#sheetSel"); const names = Object.keys(RAW).filter(n=>n!=="LEGGIMI");
+  const cur = sel.value && names.includes(sel.value) ? sel.value : "Materiali";
+  sel.innerHTML = names.map(n=>`<option ${n===cur?"selected":""}>${esc(n)}</option>`).join("");
+  drawSheet(cur);
+}
+function drawSheet(n){
+  const rows = RAW[n]||[]; if(!rows.length){ $("#sheetTbl").innerHTML = `<tr><td class="muted">Foglio vuoto</td></tr>`; return; }
+  const cols = Object.keys(rows[0]);
+  const fmt = v => typeof v==="number" ? (Number.isInteger(v)?v.toLocaleString("it-IT"):v.toLocaleString("it-IT",{maximumFractionDigits:3})) : esc(v??"");
+  $("#sheetTbl").innerHTML = `<thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>`+
+    rows.map(r=>`<tr>${cols.map(c=>`<td class="${typeof r[c]==="number"?"r num":""}">${fmt(r[c])}</td>`).join("")}</tr>`).join("")+`</tbody>`;
+}
+$("#sheetSel").addEventListener("change",e=>drawSheet(e.target.value));
+
+/* ---------------- Stampa offerta ---------------- */
+function buildPrint(){
+  const R = calcAll(), P = DB.P;
+  const d = S.data ? new Date(S.data).toLocaleDateString("it-IT") : "";
+  const righe = S.pezzi.map((p,i)=>{
+    const c = R.pezzi[i], m = DB.mod[p.modello], mat = c.mat;
+    const dims = `${n1(p.L)} × ${n1(p.P)} cm${p.H>0?` · ${String(m.Label_H).split("(")[0].trim()} ${n1(p.H)} cm`:""}`;
+    const fin = p.finitura ? " · finitura "+DB.lav[p.finitura].Lavorazione.toLowerCase() : "";
+    const lav = c.righe.filter(r=>r.on&&r.qty>0&&!r.fin&&!/MOVIM|IMBALLO/.test(r.lav)).map(r=>DB.lav[r.lav].Lavorazione.toLowerCase());
+    const uniq = [...new Set(lav)].join(", ");
+    return `<tr><td>${i+1}</td><td><b>${esc(p.descr||m.Modello)}</b><br>${esc(mat.Materiale)} sp. ${n1(num(mat.Spessore_cm))} cm${esc(fin)} · ${dims}${uniq?`<br><small>Lavorazioni: ${esc(uniq)}</small>`:""}</td><td style="text-align:right">${n1(p.N)}</td><td style="text-align:right">${eur(c.diretto*R.k)}</td></tr>`;
+  }).join("");
+  const acc = R.acc.filter(x=>x.on&&x.cost>0).map(x=>`<tr><td></td><td>${esc(x.a.Voce)}</td><td style="text-align:right">${n2(x.qty)} ${UM_LABEL[x.a.UM]||esc(x.a.UM)}</td><td style="text-align:right">${eur(x.cost*R.k)}</td></tr>`).join("");
+  $("#printOffer").innerHTML = `
+    <h1>${esc(P.Ragione_sociale||"")}</h1><div>Offerta economica</div>
+    <div class="meta"><div><b>Cliente:</b> ${esc(S.cliente)}</div><div><b>Data:</b> ${d}</div>
+      <div><b>Riferimento:</b> ${esc(S.rif)}</div><div><b>Validità:</b> ${esc(P.Validita_giorni||30)} giorni</div></div>
+    <table><thead><tr><th>#</th><th>Descrizione</th><th style="text-align:right">Q.tà</th><th style="text-align:right">Importo</th></tr></thead>
+      <tbody>${righe}${acc}${Math.abs(R.arrDiff)>0.004?`<tr><td></td><td>Arrotondamento</td><td></td><td style="text-align:right">${eur(R.arrDiff)}</td></tr>`:""}</tbody></table>
+    <table class="tot"><tr><td>Imponibile</td><td style="text-align:right">${eur(R.netto)}</td></tr>
+      <tr><td>IVA ${pct(R.iva)}</td><td style="text-align:right">${eur(R.ivaV)}</td></tr>
+      <tr><td><b>Totale</b></td><td style="text-align:right"><b>${eur(R.totale)}</b></td></tr></table>
+    <p style="margin-top:24px;font-size:9pt">Misure da confermare con rilievo. Le venature e le tonalità dei materiali naturali possono variare rispetto ai campioni.</p>`;
+}
+
+loadListino();
+</script>
+</body>
+</html>
